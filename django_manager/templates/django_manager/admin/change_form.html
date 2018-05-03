@@ -1,0 +1,182 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static admin_modify %}
+
+{% block extrahead %}{{ block.super }}
+<script type="text/javascript" src="{% url 'admin:jsi18n' %}"></script>
+{{ media }}
+
+<!--自定义-->
+{% if adminform.model_admin.editor_md_fields %}
+
+{% for js in adminform.model_admin.get_editormd_cj.1 %}
+<script type="text/javascript" src="{{ js }}"></script>
+{% endfor %}
+
+{% for css in adminform.model_admin.get_editormd_cj.0.all %}
+<link rel="stylesheet" type="text/css" href="{{ css }}" />
+{% endfor %}
+
+{% endif %}
+
+
+{% if adminform.model_admin.wang_editor_fields %}
+
+{% for js in adminform.model_admin.get_wang_editor_cj.1 %}
+<script type="text/javascript" src="{{ js }}"></script>
+{% endfor %}
+
+{% for css in adminform.model_admin.get_wang_editor_cj.0.all %}
+<link rel="stylesheet" type="text/css" href="{{ css }}" />
+{% endfor %}
+
+{% endif %}
+
+<!--结束-->
+
+
+{% endblock %}
+
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" type="text/css" href="{% static "admin/css/forms.css" %}" />{% endblock %}
+
+{% block coltype %}colM{% endblock %}
+
+{% block bodyclass %}{{ block.super }} app-{{ opts.app_label }} model-{{ opts.model_name }} change-form{% endblock %}
+
+{% if not is_popup %}
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+&rsaquo; {% if has_change_permission %}<a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>{% else %}{{ opts.verbose_name_plural|capfirst }}{% endif %}
+&rsaquo; {% if add %}{% blocktrans with name=opts.verbose_name %}Add {{ name }}{% endblocktrans %}{% else %}{{ original|truncatewords:"18" }}{% endif %}
+</div>
+{% endblock %}
+{% endif %}
+
+{% block content %}<div id="content-main">
+{% block object-tools %}
+{% if change %}{% if not is_popup %}
+  <ul class="object-tools">
+    {% block object-tools-items %}
+    <li>
+        {% url opts|admin_urlname:'history' original.pk|admin_urlquote as history_url %}
+        <a href="{% add_preserved_filters history_url %}" class="historylink">{% trans "History" %}</a>
+    </li>
+    {% if has_absolute_url %}<li><a href="{{ absolute_url }}" class="viewsitelink">{% trans "View on site" %}</a></li>{% endif %}
+    {% endblock %}
+  </ul>
+{% endif %}{% endif %}
+{% endblock %}
+<form {% if has_file_field %}enctype="multipart/form-data" {% endif %}action="{{ form_url }}" method="post" id="{{ opts.model_name }}_form" novalidate>{% csrf_token %}{% block form_top %}{% endblock %}
+<div>
+{% if is_popup %}<input type="hidden" name="{{ is_popup_var }}" value="1" />{% endif %}
+{% if to_field %}<input type="hidden" name="{{ to_field_var }}" value="{{ to_field }}" />{% endif %}
+{% if save_on_top %}{% block submit_buttons_top %}{% submit_row %}{% endblock %}{% endif %}
+{% if errors %}
+    <p class="errornote">
+    {% if errors|length == 1 %}{% trans "Please correct the error below." %}{% else %}{% trans "Please correct the errors below." %}{% endif %}
+    </p>
+    {{ adminform.form.non_field_errors }}
+{% endif %}
+
+{% block field_sets %}
+{% for fieldset in adminform %}
+  {% include "django_manager/admin/includes/fieldset.html" %}
+{% endfor %}
+{% endblock %}
+
+{% block after_field_sets %}{% endblock %}
+
+{% block inline_field_sets %}
+{% for inline_admin_formset in inline_admin_formsets %}
+    {% include inline_admin_formset.opts.template %}
+{% endfor %}
+{% endblock %}
+
+{% block after_related_objects %}{% endblock %}
+
+{% block submit_buttons_bottom %}{% submit_row %}{% endblock %}
+
+{% block admin_change_form_document_ready %}
+<script type="text/javascript"
+        id="django-admin-form-add-constants"
+        src="{% static 'admin/js/change_form.js' %}"
+        {% if adminform and add %}
+            data-model-name="{{ opts.model_name }}"
+        {% endif %}>
+
+</script>
+
+
+    <!--自定义-->
+{% if adminform.model_admin.editor_md_fields %}
+ <script type="application/javascript">
+     {% for field in adminform.model_admin.editor_md_fields %}
+$(function () {
+var editor = editormd("editor_md_{{field}}", {
+    width: "90%",
+    height: 800,
+    // theme : "dark",
+    // previewTheme : "dark",
+    // editorTheme : "pastel-on-dark",
+    // syncScrolling: "single",
+    saveHTMLToTextarea:true,
+    path: "/django_manager/editormd/lib/",
+    emoji: true,
+    // imageUpload: true,
+    // imageUploadTokenURL: '/django_manager/upload',
+    imageUploadURL: '/django_manager/upload?upload_type=editormd',
+    // imageRequestBaseURL: '{{ imageRequestBaseURL }}',
+    imageFormats: ["jpg", "jpeg", "gif", "png", "bmp", "webp", "svg"]
+});
+// console.log(editor.getMarkdown());   // 获取 Markdown 源码
+// console.log(editor.getHTML());   // 获取 Markdown 源码
+//      // 获取 Textarea 保存的 HTML 源码
+// // editor.getPreviewedHTML();
+});
+
+     {% endfor %}
+ </script>
+{% endif %}
+
+{% if adminform.model_admin.wang_editor_fields %}
+<script>
+function wang_edit_init(id) {
+        var editor = new wangEditor(id);
+        editor.config.printLog = false;
+        editor.config.height = 200;
+        editor.config.uploadImgUrl = "/django_manager/upload?upload_type=wangEditor";
+        editor.config.uploadImgFileName = 'uploadFile';
+        editor.create();
+}
+{% for field in adminform.model_admin.wang_editor_fields %}
+$(function () {
+    wang_edit_init('wang_editor_{{field}}');
+    $(".wangEditor-txt").height($(window).height()- 140);
+    $(".wangEditor-txt").width($(window).width()- 200);
+    left = $("label[for='wang_editor_{{field}}']").width();
+
+    var div_css = {
+        "position": "relative",
+        "background-color": "#fff",
+        "border": "1px solid #ccc",
+        "z-index": 1,
+        "width": "94%",
+        "left": left
+    };
+    $(".wangEditor-container").css(div_css);
+});
+    {% endfor %}
+</script>
+{% endif %}
+<!--结束-->
+
+
+{% endblock %}
+
+{# JavaScript for prepopulated fields #}
+{% prepopulated_fields_js %}
+
+</div>
+</form></div>
+{% endblock %}
