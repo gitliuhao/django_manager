@@ -23,6 +23,7 @@ def upload(request):
         img = Image.open(uploadimg.file)
         img.save(file_url)
         http_url = "http://{}/{}".format(request.get_host(), file_url)
+        print(http_url)
         if upload_type == "editormd":
             return JsonResponse({'success': 1, "url": http_url})
         return HttpResponse(http_url)

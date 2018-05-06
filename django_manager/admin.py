@@ -62,11 +62,26 @@ def get_field_tag(model_class, field):
                            *(getattr(model_self, field.name).url,) * 2)
 
     def forekey_tag(model_self):
-        return format_html('<a href="/admin/{}/{}/{}/change" target="_blank" >{}</a>',
-                           model_self._meta.app_label,
-                           model_self.__class__.__name__.lower(),
-                           model_self.pk,
-                           str(getattr(model_self, field.name) or ''), )
+        obj = getattr(model_self, field.name)
+        if obj:
+            return format_html('<a href="/admin/{}/{}/{}/change" target="_blank" >{}</a>',
+                               obj._meta.app_label,
+                               obj.__class__.__name__.lower(),
+                               obj.pk,
+                               str(obj))
+
+    def many_to_many_tag(model_self):
+        objects = getattr(model_self, field.name).all()
+        print(objects, 'xxxxxxxxxxxxxxxx')
+        html = ''
+        for obj in objects:
+            html += '<a href="/admin/{}/{}/{}/change" target="_blank" >{}</a></br>' \
+                .format(obj._meta.app_label,
+                        obj.__class__.__name__.lower(),
+                        obj.pk,
+                        str(obj))
+        return html
+
 
     def char_tag(model_self):
         values = strip_tags('{}'.format(getattr(model_self, field.name)))
@@ -82,11 +97,14 @@ def get_field_tag(model_class, field):
         return getattr(model_self, "get_%s_display" % field.name)()
 
     field_type = field.__class__.__name__
-    if field_type in ["ImageField", 'ForeignKey', 'OneToOneField', 'CharField', 'TextField']:
+    if field_type in ["ImageField", 'ForeignKey', 'OneToOneField', 'ManyToManyField',
+                      'CharField', 'TextField',]:
         if field_type == "ImageField":
             tag = img_tag
         elif field_type in ['CharField', 'TextField']:
             tag = char_tag if not field.choices else choices_tag
+        elif field_type == 'ManyToManyField':
+            tag = many_to_many_tag
         else:
             tag = forekey_tag
         tag.short_description = field.verbose_name
@@ -105,7 +123,8 @@ class RegisterModel(object):
         self._css = css or {}
         self.content_type = content_type
         self.model_class = content_type.model_class()
-        self.fields = self.model_class._meta.fields
+        self._meta = self.model_class._meta
+        self.fields = self._meta.fields + self._meta.many_to_many
         self.app_name = content_type.model
 
         self.wang_editor_fields = wang_editor_fields if isinstance(wang_editor_fields, collections.Iterable) else ()
@@ -117,7 +136,10 @@ class RegisterModel(object):
 
     def get_search_field(self, field):
         type_name = field.__class__.__name__
-        if type_name not in ['ForeignKey', 'OneToOneField']:
+        if type_name not in ['ForeignKey',
+                             'OneToOneField',
+                             'ManyToManyField',
+                             'DateTimeField']:
             return field.name
 
     def get_filter_field(self, field):
@@ -160,7 +182,8 @@ class RegisterModel(object):
         self.widgets = widgets
         class Meta:
             model = self.model_class
-            fields = [field.name for field in self.fields if field.editable]
+            fields = '__all__'
+            # fields = [field.name for field in self.fields if field.editable]
             widgets = self.widgets
         new_form = type("New{}ModelForm".format(self.model_class.__class__.__name__),
                         (forms.ModelForm,),
