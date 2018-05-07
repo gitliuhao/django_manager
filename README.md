@@ -47,4 +47,6 @@ wang_editor_fields = ("my_wang_editor_field",)  // 添加表中采用富文本�
 adm.registers(wang_editor_fields)
 
 ```
+### amdin使用markdown编辑器
+
 
